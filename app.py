@@ -10,6 +10,7 @@ import streamlit as st
 import auth
 import database
 from prediction import (
+    BASE_URL,
     get_or_create_report_pdf,
     load_artifacts,
     render_mobile_report_view,
@@ -321,7 +322,7 @@ def render_analytics(user_id: int) -> None:
     with row2_col2:
         st.subheader("Actual vs Predicted Price")
         if "analytics_dataset" not in st.session_state:
-            st.session_state["analytics_dataset"] = pd.read_csv("dataset\\train-data_with_accidents.csv")
+            st.session_state["analytics_dataset"] = pd.read_csv("dataset/train-data_with_accidents.csv")
 
         if "analytics_model" not in st.session_state:
             model, _, _ = load_artifacts()
@@ -466,19 +467,22 @@ def render_app() -> None:
     if report_id:
         normalized_id = str(report_id).strip().upper()
         qr_id = str(st.query_params.get("qr_id", "")).strip()
+        report_url = f"{BASE_URL}/?report_id={normalized_id}"
+        if qr_id:
+            report_url = f"{report_url}&qr_id={qr_id}"
         tracked_key = f"qr_open_logged_{normalized_id}_{qr_id}"
         if not st.session_state.get(tracked_key, False):
             database.save_report_access_event(
                 prediction_id=normalized_id,
                 qr_id=qr_id,
-                qr_url="",
+                qr_url=report_url,
                 access_type="QR_SCAN",
                 access_status="OPENED",
             )
             database.save_report_access_event(
                 prediction_id=normalized_id,
                 qr_id=qr_id,
-                qr_url="",
+                qr_url=report_url,
                 access_type="MOBILE_VIEW",
                 access_status="VIEWED",
             )

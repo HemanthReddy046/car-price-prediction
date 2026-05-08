@@ -13,7 +13,7 @@ import random
 from tempfile import NamedTemporaryFile
 
 # Load dataset
-df = pd.read_csv("dataset\\train-data_with_accidents.csv")
+df = pd.read_csv("dataset/train-data_with_accidents.csv")
 
 # Drop unnecessary columns
 df.drop(columns=['Unnamed: 0', 'New_Price'], inplace=True, errors="ignore")

@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import socket
 import uuid
 from io import BytesIO
 from datetime import datetime
@@ -17,6 +16,7 @@ import database
 from report_utils import build_prediction_report_pdf
 
 PREDICTION_ID_PATTERN = re.compile(r"^[A-Z0-9]{8,10}$")
+BASE_URL = "https://car-price-prediction-x7whzs5ckgceqdwbwmn2fk.streamlit.app"
 
 
 @st.cache_resource
@@ -29,7 +29,7 @@ def load_artifacts():
 
 @st.cache_data
 def load_reference_data():
-    df = pd.read_csv("dataset\\train-data_with_accidents.csv")
+    df = pd.read_csv("dataset/train-data_with_accidents.csv")
     df["Brand"] = df["Name"].str.split().str[0]
     df["Model"] = df["Name"].str.split().str[1]
 
@@ -52,16 +52,7 @@ def _resolve_mobile_base_url() -> str:
     configured_url = (os.getenv("APP_BASE_URL", "") or "").strip().rstrip("/")
     if configured_url:
         return configured_url
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname)
-    if local_ip.startswith("127."):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.connect(("8.8.8.8", 80))
-                local_ip = sock.getsockname()[0]
-        except OSError:
-            pass
-    return f"http://{local_ip}:8501"
+    return BASE_URL
 
 
 def _render_mobile_report_content(prediction_row, user_email: str) -> None:
@@ -118,10 +109,11 @@ def render_mobile_report_view(prediction_id: str, user_id: int | None, user_emai
         key=f"mobile_view_download_{normalized_id}",
     ):
         qr_id = st.query_params.get("qr_id", "")
+        report_url = f"{_resolve_mobile_base_url()}/?report_id={normalized_id}&qr_id={qr_id}"
         database.save_report_access_event(
             prediction_id=normalized_id,
             qr_id=qr_id,
-                    qr_url="",
+            qr_url=report_url,
             access_type="PDF_DOWNLOAD",
             access_status="DOWNLOADED",
         )
@@ -376,13 +368,12 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                 is_new_qr = True
             qr_id = st.session_state["report_qr_meta"][active_prediction_id]["qr_id"]
 
-            base_url = _resolve_mobile_base_url()
-            mobile_url = f"{base_url}/?report_id={active_prediction_id}&qr_id={qr_id}"
+            report_url = f"{_resolve_mobile_base_url()}/?report_id={active_prediction_id}&qr_id={qr_id}"
             if is_new_qr:
                 database.save_report_access_event(
                     prediction_id=active_prediction_id,
                     qr_id=qr_id,
-                    qr_url=mobile_url,
+                    qr_url=report_url,
                     access_type="QR_SCAN",
                     access_status="GENERATED",
                 )
@@ -405,7 +396,7 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                     database.save_report_access_event(
                         prediction_id=active_prediction_id,
                         qr_id=qr_id,
-                        qr_url=mobile_url,
+                        qr_url=report_url,
                         access_type="PDF_DOWNLOAD",
                         access_status="DOWNLOADED",
                     )
@@ -418,7 +409,7 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                     database.save_report_access_event(
                         prediction_id=active_prediction_id,
                         qr_id=qr_id,
-                        qr_url=mobile_url,
+                        qr_url=report_url,
                         access_type="MOBILE_VIEW",
                         access_status="OPENED",
                     )
@@ -435,7 +426,7 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                 database.save_report_access_event(
                     prediction_id=active_prediction_id,
                     qr_id=qr_id,
-                    qr_url=mobile_url,
+                    qr_url=report_url,
                     access_type="MOBILE_VIEW",
                     access_status="VIEWED",
                 )
@@ -447,13 +438,15 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                 if inline_row:
                     _render_mobile_report_content(inline_row, user_email=user_email)
 
-            qr_image = qrcode.make(mobile_url)
+            qr = qrcode.QRCode(version=1, box_size=10, border=4)
+            qr.add_data(report_url)
+            qr.make(fit=True)
+            qr_image = qr.make_image(fill_color="black", back_color="white")
             qr_buffer = BytesIO()
             qr_image.save(qr_buffer, format="PNG")
             st.markdown("### 📷 Scan QR To Open Report On Phone")
             st.image(qr_buffer.getvalue(), caption="Scan to open mobile report view", width=240)
-            st.info("📱 Connect phone to same WiFi network")
-            st.markdown(f"🌐 Mobile URL: `{mobile_url}`")
+            st.markdown(f"🌐 Mobile URL: `{report_url}`")
 
     st.markdown("---")
     st.subheader("📥 Download Report by Prediction ID")
@@ -484,7 +477,7 @@ def render_predict_price_page(user_id: int, user_email: str) -> None:
                             database.save_report_access_event(
                                 prediction_id=normalized_id,
                                 qr_id="",
-                                qr_url="",
+                                qr_url=f"{_resolve_mobile_base_url()}/?report_id={normalized_id}",
                                 access_type="PDF_DOWNLOAD",
                                 access_status="DOWNLOADED",
                             )

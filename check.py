@@ -1,8 +1,8 @@
 '''import pandas as pd
 
 # Load train and test datasets
-train_df = pd.read_csv("dataset\\train-data.csv")
-test_df = pd.read_csv("dataset\\test-data.csv")
+train_df = pd.read_csv("dataset/train-data.csv")
+test_df = pd.read_csv("dataset/test-data.csv")
 
 # Display the first five rows
 print(train_df.head())
