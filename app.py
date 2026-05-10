@@ -315,10 +315,30 @@ def render_analytics(user_id: int) -> None:
 
     row2_col1, row2_col2 = st.columns(2)
     with row2_col1:
-        st.subheader("Price Trend Over Time")
-        trend_df = df.groupby("date", as_index=False)["predicted_price"].mean()
-        trend_df = trend_df.rename(columns={"predicted_price": "Average Predicted Price"})
-        st.line_chart(trend_df.set_index("date"))
+        st.subheader("Predictions Over Time")
+        chart_df = df[["timestamp", "predicted_price"]].copy()
+        chart_df["timestamp"] = pd.to_datetime(chart_df["timestamp"], errors="coerce")
+        chart_df["predicted_price"] = pd.to_numeric(chart_df["predicted_price"], errors="coerce")
+        chart_df = chart_df.dropna(subset=["timestamp", "predicted_price"])
+        chart_df = chart_df.sort_values("timestamp", ascending=True)
+        if chart_df.empty:
+            st.info("Not enough prediction data available for analytics.")
+        else:
+            pred_fig = px.line(
+                chart_df,
+                x="timestamp",
+                y="predicted_price",
+                markers=True,
+                title="Predictions Over Time",
+                template="plotly_dark",
+            )
+            pred_fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis_title="Date & Time",
+                yaxis_title="Predicted Price (Lakhs)",
+            )
+            st.plotly_chart(pred_fig, use_container_width=True)
 
     with row2_col2:
         st.subheader("Actual vs Predicted Price")
