@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+import pandas as pd
+
 
 DB_PATH = "car_prediction.db"
 
@@ -399,9 +401,11 @@ def get_report_access_history_for_user(user_id: int) -> List[sqlite3.Row]:
         return cur.fetchall()
 
 
-def fetch_sql_dataframe(query: str) -> Any:
+def fetch_sql_dataframe(query: str) -> pd.DataFrame:
     """Run a read-only SELECT for admin viewing; short-lived connection."""
-    import pandas as pd
-
-    with sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30) as conn:
-        return pd.read_sql_query(query, conn)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        df = pd.read_sql_query(query, conn)
+    finally:
+        conn.close()
+    return df
