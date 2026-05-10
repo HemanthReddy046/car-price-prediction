@@ -155,19 +155,39 @@ def render_dashboard() -> None:
     st.markdown("### 📈 Predictions Over Time")
     if not history_df.empty and {"timestamp", "predicted_price"}.issubset(history_df.columns):
         history_df["timestamp"] = pd.to_datetime(history_df["timestamp"], errors="coerce")
-        history_df = history_df.dropna(subset=["timestamp"]).sort_values("timestamp")
+        history_df["predicted_price"] = pd.to_numeric(history_df["predicted_price"], errors="coerce")
+        history_df = history_df.dropna(subset=["timestamp", "predicted_price"]).sort_values(
+            "timestamp", ascending=True
+        )
         if not history_df.empty:
-            trend_fig = px.line(
-                history_df,
-                x="timestamp",
-                y="predicted_price",
-                markers=True,
-                title="Predictions Over Time",
-                template="plotly_dark",
-            )
+            # ==============================
+            # Predictions Over Time
+            # ==============================
+            if len(history_df) > 1:
+                trend_fig = px.line(
+                    history_df,
+                    x="timestamp",
+                    y="predicted_price",
+                    markers=True,
+                    title="Predictions Over Time",
+                )
+                trend_fig.update_traces(
+                    line=dict(color="#00E5FF", width=4),
+                    marker=dict(size=8, color="#FF4B4B"),
+                )
+            else:
+                trend_fig = px.scatter(
+                    history_df,
+                    x="timestamp",
+                    y="predicted_price",
+                    title="Predictions Over Time",
+                )
+                trend_fig.update_traces(marker=dict(size=14, color="#00E5FF"))
+
             trend_fig.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="#111111",
+                plot_bgcolor="#111111",
+                font=dict(color="white"),
                 xaxis_title="Date & Time",
                 yaxis_title="Predicted Price (Lakhs)",
             )
@@ -179,16 +199,34 @@ def render_dashboard() -> None:
 
     st.markdown("### 📊 Price Distribution")
     if not history_df.empty and "predicted_price" in history_df.columns:
-        dist_fig = px.histogram(
-            history_df,
-            x="predicted_price",
-            nbins=20,
-            title="Distribution of Predicted Prices",
-            template="plotly_dark",
+        # ==============================
+        # Price Distribution
+        # ==============================
+        if len(history_df) > 1:
+            dist_fig = px.histogram(
+                history_df,
+                x="predicted_price",
+                nbins=min(10, len(history_df)),
+                title="Distribution of Predicted Prices",
+            )
+        else:
+            dist_fig = px.bar(
+                history_df,
+                x="timestamp",
+                y="predicted_price",
+                title="Distribution of Predicted Prices",
+            )
+
+        dist_fig.update_traces(
+            marker_color="#00E5FF",
+            marker_line_color="white",
+            marker_line_width=1.5,
+            opacity=0.85,
         )
         dist_fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#111111",
+            plot_bgcolor="#111111",
+            font=dict(color="white"),
             xaxis_title="Predicted Price (Lakhs)",
             yaxis_title="Frequency",
         )
