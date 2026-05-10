@@ -502,18 +502,23 @@ def render_app() -> None:
     if not auth.render_auth_ui():
         return
 
+    auth.sync_role_from_db_if_needed()
+
+    nav_pages = [
+        "Dashboard",
+        "Predict Price",
+        "Prediction History",
+        "Analytics",
+    ]
+    if st.session_state.get("role") == "admin":
+        nav_pages.append("Database Viewer")
+    nav_pages.append("Logout")
+
     with st.sidebar:
         st.success(f"Logged in as {st.session_state['user_email']}")
         selected_page = st.radio(
             "Navigation",
-            [
-                "Dashboard",
-                "Predict Price",
-                "Prediction History",
-                "Analytics",
-                "Database Viewer",
-                "Logout",
-            ],
+            nav_pages,
         )
 
     if selected_page == "Dashboard":

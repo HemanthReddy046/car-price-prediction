@@ -20,6 +20,12 @@ def _safe_table(query: str, label: str) -> None:
 
 
 def render_database_viewer() -> None:
+    if st.session_state.get("role") != "admin":
+        st.markdown("### 🔒 Access Restricted — Admin Only")
+        return
+
+    st.markdown("## 🔒 ADMIN DATABASE VIEWER")
+    st.caption("Confidential system records — authorized administrators only.")
     st.title("🗄️ Database Viewer")
     st.markdown("Read-only snapshots of SQLite tables.")
     st.divider()

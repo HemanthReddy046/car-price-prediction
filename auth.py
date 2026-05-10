@@ -23,13 +23,35 @@ def init_session_state() -> None:
     st.session_state.setdefault("user_id", None)
     st.session_state.setdefault("user_email", "")
     st.session_state.setdefault("auth_view", "login")
+    st.session_state.setdefault("role", "")
 
 
 def logout() -> None:
     st.session_state["authenticated"] = False
     st.session_state["user_id"] = None
     st.session_state["user_email"] = ""
+    st.session_state["role"] = ""
     st.session_state["auth_view"] = "login"
+
+
+def sync_role_from_db_if_needed() -> None:
+    """Populate session role after deploy/migration when older sessions lacked it."""
+    if not st.session_state.get("authenticated"):
+        return
+    if st.session_state.get("role"):
+        return
+    email = (st.session_state.get("user_email") or "").strip()
+    if not email:
+        return
+    row = database.get_user_by_email(email)
+    if not row:
+        st.session_state["role"] = database.DEFAULT_USER_ROLE
+        return
+    try:
+        raw = row["role"]
+    except (IndexError, KeyError):
+        raw = None
+    st.session_state["role"] = database.normalize_user_role(raw)
 
 
 def login_user(email: str, password: str) -> Tuple[bool, str]:
@@ -41,6 +63,11 @@ def login_user(email: str, password: str) -> Tuple[bool, str]:
     st.session_state["authenticated"] = True
     st.session_state["user_id"] = int(user["id"])
     st.session_state["user_email"] = user["email"]
+    try:
+        stored_role = user["role"]
+    except (IndexError, KeyError):
+        stored_role = None
+    st.session_state["role"] = database.normalize_user_role(stored_role)
     return True, "Login successful"
 
 

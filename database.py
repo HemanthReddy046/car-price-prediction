@@ -11,6 +11,18 @@ import pandas as pd
 
 DB_PATH = "car_prediction.db"
 
+DEFAULT_USER_ROLE = "user"
+ADMIN_USER_ROLE = "admin"
+# Manually elevated via init_db migration; assign other admins directly in SQLite if needed.
+PRIMARY_ADMIN_EMAIL = "hemanth.7837@gmail.com"
+
+
+def normalize_user_role(raw: Optional[str]) -> str:
+    """Map stored role text to canonical 'admin' or 'user' only."""
+    if raw is None or not str(raw).strip():
+        return DEFAULT_USER_ROLE
+    return ADMIN_USER_ROLE if str(raw).strip().lower() == ADMIN_USER_ROLE else DEFAULT_USER_ROLE
+
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, timeout=10)
@@ -52,6 +64,15 @@ def init_db() -> None:
                 security_answer TEXT NOT NULL
             )
             """
+        )
+        cur.execute("PRAGMA table_info(users)")
+        user_columns = {row["name"] for row in cur.fetchall()}
+        if "role" not in user_columns:
+            cur.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+
+        cur.execute(
+            "UPDATE users SET role = ? WHERE LOWER(TRIM(email)) = ?",
+            (ADMIN_USER_ROLE, PRIMARY_ADMIN_EMAIL.strip().lower()),
         )
 
         cur.execute(
@@ -130,10 +151,17 @@ def create_user(
     try:
         _execute_write_with_retry(
             """
-            INSERT INTO users (email, password, mobile, security_question, security_answer)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO users (email, password, mobile, security_question, security_answer, role)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (email.strip().lower(), password_hash, mobile.strip(), security_question, security_answer_hash),
+            (
+                email.strip().lower(),
+                password_hash,
+                mobile.strip(),
+                security_question,
+                security_answer_hash,
+                DEFAULT_USER_ROLE,
+            ),
         )
         return True, "Account created successfully"
     except sqlite3.IntegrityError:
