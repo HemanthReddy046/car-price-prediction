@@ -397,3 +397,11 @@ def get_report_access_history_for_user(user_id: int) -> List[sqlite3.Row]:
             (user_id,),
         )
         return cur.fetchall()
+
+
+def fetch_sql_dataframe(query: str) -> Any:
+    """Run a read-only SELECT for admin viewing; short-lived connection."""
+    import pandas as pd
+
+    with sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30) as conn:
+        return pd.read_sql_query(query, conn)

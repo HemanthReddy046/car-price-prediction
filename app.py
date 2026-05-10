@@ -9,6 +9,7 @@ import streamlit as st
 
 import auth
 import database
+from database_viewer import render_database_viewer
 from prediction import (
     BASE_URL,
     get_or_create_report_pdf,
@@ -510,6 +511,7 @@ def render_app() -> None:
                 "Predict Price",
                 "Prediction History",
                 "Analytics",
+                "Database Viewer",
                 "Logout",
             ],
         )
@@ -525,6 +527,8 @@ def render_app() -> None:
         render_history(st.session_state["user_id"])
     elif selected_page == "Analytics":
         render_analytics(st.session_state["user_id"])
+    elif selected_page == "Database Viewer":
+        render_database_viewer()
     elif selected_page == "Logout":
         auth.logout()
         st.success("Logged out successfully")
